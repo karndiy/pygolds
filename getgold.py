@@ -13,12 +13,14 @@ POST_URL = 'https://karndiy.pythonanywhere.com/cjson/goldjson-v2'
 DATA_DIR = Path("data")
 OUT_JSON = DATA_DIR / "gold_prices.json"
 
-# เพิ่ม Headers ให้สมจริงขึ้น เพื่อเลี่ยงการถูกบล็อก
+# เพิ่ม Header ที่สำคัญเพื่อเลี่ยง 403 Forbidden
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Connection": "keep-alive"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Referer": "https://classic.goldtraders.or.th/",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Language": "en-US,en;q=0.9,th;q=0.8",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1"
 }
 
 def xnowtime():
@@ -42,26 +44,21 @@ def parse_be_datetime(s: str):
     except Exception:
         return None
 
-def scrape_gold_data(url=GTO_URL, retries=3, backoff=1.5, timeout=15):
+def scrape_gold_data(url=GTO_URL, retries=3, backoff=2, timeout=15):
     last_err = None
     for attempt in range(1, retries+1):
         try:
             print(f"[{xnowtime()}] Attempt {attempt}/{retries} connecting to {url}...")
+            # เพิ่ม timeout เล็กน้อยเพื่อให้ server ประมวลผลได้
             res = requests.get(url, headers=HEADERS, timeout=timeout)
             res.raise_for_status()
             res.encoding = "utf-8"
             
-            # เช็คว่าเนื้อหาที่ได้มามีอะไรบ้าง
-            if not res.text:
-                print(f"[{xnowtime()}] Warning: Received empty response.")
-                return []
-
             soup = BeautifulSoup(res.text, 'html.parser')
             table = soup.find("table", {"id": "DetailPlace_MainGridView"})
             
             if not table:
-                print(f"[{xnowtime()}] Error: Table not found! HTML preview (first 500 chars):")
-                print(res.text[:500]) # พิมพ์ออกมาให้เห็นว่าหน้าเว็บที่ GitHub ได้รับคืออะไร
+                print(f"[{xnowtime()}] Error: Table not found!")
                 return []
 
             rows = table.find_all("tr")
@@ -115,7 +112,7 @@ def main():
         print(f"[{xnowtime()}] POST OK 201")
         return 0
     else:
-        print(f"[{xnowtime()}] POST failed: {status} - {body}")
+        print(f"[{xnowtime()}] POST failed: {status} - {body[:300]}...")
         return 4
 
 if __name__ == "__main__":

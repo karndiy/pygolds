@@ -1,0 +1,37 @@
+name: Run Gold Price Scraper
+
+on:
+  schedule:
+    # รันทุก 30 นาที, วันจันทร์-ศุกร์, ช่วง 09:00 - 18:00 (เวลาไทย)
+    # แปลงเป็นเวลา UTC (ไทย - 7 ชม.) คือ 02:00 - 11:00
+    - cron: '0,30 2-11 * * 1-5'
+  workflow_dispatch: # ให้สามารถกดรันมือได้ด้วย
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run getgold.py
+        run: python getgold.py
+        env:
+          TZ: Asia/Bangkok
